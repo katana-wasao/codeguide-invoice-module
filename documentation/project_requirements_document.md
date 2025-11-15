@@ -1,117 +1,105 @@
-# Project Requirements Document: codeguide-starter
-
----
+# Project Requirements Document (PRD)
 
 ## 1. Project Overview
 
-The **codeguide-starter** project is a boilerplate web application that provides a ready-made foundation for any web project requiring secure user authentication and a post-login dashboard. It sets up the common building blocks—sign-up and sign-in pages, API routes to handle registration and login, and a simple dashboard interface driven by static data. By delivering this skeleton, it accelerates development time and ensures best practices are in place from day one.
+The **codeguide-invoice-module** is a full-stack invoice management system built on a modern Next.js 15 starter kit. It provides a secure, scalable foundation for admins and customers to create, view, edit, and pay invoices. Out of the box it handles user authentication, session management, responsive UI components, and database integration, so development focus can go straight to invoicing logic, notifications, and payment workflows.
 
-This starter kit is being built to solve the friction developers face when setting up repeated common tasks: credential handling, session management, page routing, and theming. Key objectives include: 1) delivering a fully working authentication flow (registration & login), 2) providing a gated dashboard area upon successful login, 3) establishing a clear, maintainable project structure using Next.js and TypeScript, and 4) demonstrating a clean theming approach with global and section-specific CSS. Success is measured by having an end-to-end login journey in under 200 lines of code and zero runtime type errors.
-
----
+This module is being built to streamline billing operations for small to mid-sized businesses. Key success criteria include: 
+- A clear, role-based access model that distinguishes admin and customer capabilities
+- End-to-end invoice CRUD (Create, Read, Update, Delete) with real-time UI feedback
+- Automated email reminders and a secure payment webhook flow
+- Reliable performance and security in a serverless deployment
 
 ## 2. In-Scope vs. Out-of-Scope
 
-### In-Scope (Version 1)
-- User registration (sign-up) form with validation
-- User login (sign-in) form with validation
-- Next.js API routes under `/api/auth/route.ts` handling:
-  - Credential validation
-  - Password hashing (e.g., bcrypt)
-  - Session creation or JWT issuance
-- Protected dashboard pages under `/dashboard`:
-  - `layout.tsx` wrapping dashboard content
-  - `page.tsx` rendering static data from `data.json`
-- Global application layout in `/app/layout.tsx`
-- Basic styling via `globals.css` and `dashboard/theme.css`
-- TypeScript strict mode enabled
+**In-Scope (Version 1):**
+- User signup, signin, session management via Better Auth
+- Role management with `admin` vs. `customer` in the user schema
+- Invoice CRUD API endpoints (`/api/invoices`, `/api/invoices/[id]`)
+- Frontend pages and components: InvoiceList, InvoiceDetail, InvoiceForm
+- Payment webhook endpoint (`/api/payments/webhook`) to mark invoices paid
+- Daily reminder job endpoint (`/api/cron/send-reminders`) triggered by an external cron service
+- Email notifications using Nodemailer
+- Responsive UI using Tailwind CSS and shadcn/ui
+- Dockerized local database (PostgreSQL via Drizzle ORM or optional MongoDB via Mongoose)
 
-### Out-of-Scope (Later Phases)
-- Integration with a real database (PostgreSQL, MongoDB, etc.)
-- Advanced authentication flows (password reset, email verification, MFA)
-- Role-based access control (RBAC)
-- Multi-tenant or white-label theming
-- Unit, integration, or end-to-end testing suites
-- CI/CD pipeline and production deployment scripts
-
----
+**Out-of-Scope (Planned for Later Phases):**
+- Multi-tenant (multiple companies under one account)
+- Invoice templates or PDF generation
+- Advanced reporting or analytics dashboards
+- Payment provider integrations beyond a single webhook
+- Multi-currency or international tax calculations
 
 ## 3. User Flow
 
-A new visitor lands on the root URL and sees a welcome page with options to **Sign Up** or **Sign In**. If they choose Sign Up, they fill in their email, password, and hit “Create Account.” The form submits to `/api/auth/route.ts`, which hashes the password, creates a new user session or token, and redirects them to the dashboard. If any input is invalid, an inline error message explains the issue (e.g., “Password too short”).
+A new user lands on the public homepage and clicks “Sign Up.” They provide email and password, receive a session token, and are assigned the default `customer` role. After email confirmation, they are redirected to a dashboard featuring a left-hand navigation bar (Dashboard, Invoices, Profile) and a main content panel showing a welcome message.
 
-Once authenticated, the user is taken to the `/dashboard` route. Here they see a sidebar or header defined by `dashboard/layout.tsx`, and the main panel pulls in static data from `data.json`. They can log out (if that control is present), but otherwise their entire session is managed by server-side cookies or tokens. Returning users go directly to Sign In, submit credentials, and upon success they land back on `/dashboard`. Any unauthorized access to `/dashboard` redirects back to Sign In.
-
----
+When a user clicks “Invoices,” they see a table (InvoiceList) with existing invoices: date, amount, status, and action buttons. Admins get “Create,” “Edit,” and “Delete” buttons; customers only see “View” and “Pay.” Clicking “Create Invoice” opens a form (InvoiceForm). Submitting it calls `POST /api/invoices` and refreshes the table. Clicking an invoice row opens InvoiceDetail, displaying line items, payment status, and trigger buttons for reminders or payment links. A customer clicking “Pay” is redirected to the payment provider, which then calls `/api/payments/webhook` to update status.
 
 ## 4. Core Features
 
-- **Sign-Up Page (`/app/sign-up/page.tsx`)**: Form fields for email & password, client-side validation, POST to `/api/auth`.
-- **Sign-In Page (`/app/sign-in/page.tsx`)**: Form fields for email & password, client-side validation, POST to `/api/auth`.
-- **Authentication API (`/app/api/auth/route.ts`)**: Handles both registration and login based on HTTP method, integrates password hashing (bcrypt) and session or JWT logic.
-- **Global Layout (`/app/layout.tsx` + `globals.css`)**: Shared header, footer, and CSS resets across all pages.
-- **Dashboard Layout (`/app/dashboard/layout.tsx` + `dashboard/theme.css`)**: Sidebar or top nav for authenticated flows, section-specific styling.
-- **Dashboard Page (`/app/dashboard/page.tsx`)**: Reads `data.json`, renders it as cards or tables.
-- **Static Data Source (`/app/dashboard/data.json`)**: Example dataset to demo dynamic rendering.
-- **TypeScript Configuration**: `tsconfig.json` with strict mode and path aliases (if any).
-
----
+- Authentication & Authorization
+  - Sign up, sign in, session management via Better Auth
+  - Role field (`admin` or `customer`) in user schema
+  - Middleware checks in API routes and page layouts
+- Invoice Management
+  - `GET /api/invoices` (list), `POST /api/invoices` (create)
+  - `GET /api/invoices/[id]` (detail), `PATCH /api/invoices/[id]` (update)
+  - `DELETE /api/invoices/[id]` (delete, admin only)
+- Payment Webhook
+  - `POST /api/payments/webhook` to validate provider callback
+  - Update invoice status to “Paid” and trigger receipt email
+- Reminder Scheduling
+  - `GET /api/cron/send-reminders` queries overdue invoices
+  - Sends reminder emails, updates last-reminder timestamp
+- Frontend Components
+  - InvoiceList (table), InvoiceDetail (card), InvoiceForm (form)
+  - Role-aware UI: hide or disable actions based on user role
+- Email Service
+  - Nodemailer setup in `lib/email.ts`
+  - Templated emails for reminders and receipts
 
 ## 5. Tech Stack & Tools
 
-- **Framework**: Next.js (App Router) for file-based routing, SSR/SSG, and API routes.
-- **Language**: TypeScript for type safety.
-- **UI Library**: React 18 for component-based UI.
-- **Styling**: Plain CSS via `globals.css` (global reset) and `theme.css` (sectional styling). Can easily migrate to CSS Modules or Tailwind in the future.
-- **Backend**: Node.js runtime provided by Next.js API routes.
-- **Password Hashing**: bcrypt (npm package).
-- **Session/JWT**: NextAuth.js or custom JWT logic (to be decided in implementation).
-- **IDE & Dev Tools**: VS Code with ESLint, Prettier extensions. Optionally, Cursor.ai for AI-assisted coding.
-
----
+- Frontend: Next.js 15 (App Router), React 19, TypeScript
+- Styling: Tailwind CSS, shadcn/ui component library
+- Authentication: Better Auth (NextAuth alternative)
+- Database & ORM: 
+  - Default: PostgreSQL via Drizzle ORM (type-safe queries)
+  - Alternative: MongoDB via Mongoose (if migrating)
+- Backend: Next.js API Routes for all REST endpoints
+- Emails: Nodemailer in `lib/email.ts`
+- Jobs/Cron: Serverless API route + external scheduler (e.g., Vercel Cron)
+- Containerization: Docker (database service)
+- Dev Tools: VS Code, Node.js LTS, Git
 
 ## 6. Non-Functional Requirements
 
-- **Performance**: Initial page load under 200 ms on a standard broadband connection. API responses under 300 ms.
-- **Security**:
-  - HTTPS only in production.
-  - Proper CORS, CSRF protection for API routes.
-  - Secure password storage (bcrypt with salt).
-  - No credentials or secrets checked into version control.
-- **Scalability**: Structure must support adding database integration, caching layers, and advanced auth flows without rewiring core app.
-- **Usability**: Forms should give real-time feedback on invalid input. Layout must be responsive (mobile > 320 px).
-- **Maintainability**: Code must adhere to TypeScript strict mode. Linting & formatting enforced by ESLint/Prettier.
-
----
+- Performance: API response ≤ 200ms under normal load
+- Scalability: Stateless Node.js functions, horizontal scaling via serverless
+- Security:
+  - HTTPS only
+  - Secure JWT/session cookies
+  - Rate limiting on webhook and cron endpoints
+  - Input validation via Zod or built-in checks
+- Usability: Responsive UI (mobile to desktop)
+- Maintainability: TypeScript strict mode, consistent code formatting (Prettier, ESLint)
 
 ## 7. Constraints & Assumptions
 
-- **No Database**: Dashboard uses only `data.json`; real database integration is deferred.
-- **Node Version**: Requires Node.js >= 14.
-- **Next.js Version**: Built on Next.js 13+ App Router.
-- **Authentication**: Assumes availability of bcrypt or NextAuth.js at implementation time.
-- **Hosting**: Targets serverless or Node.js-capable hosting (e.g., Vercel, Netlify).
-- **Browser Support**: Modern evergreen browsers; no IE11 support required.
-
----
+- Environment: Node.js 18+ on Vercel or similar serverless platform
+- Better Auth service is available and supports custom user fields
+- Database choice fixed at start; migrating between SQL and NoSQL requires code changes
+- External cron scheduler is set up separately (Vercel Cron, GitHub Actions)
+- Email provider credentials (SMTP) supplied via environment variables
 
 ## 8. Known Issues & Potential Pitfalls
 
-- **Static Data Limitation**: `data.json` is only for demo. A real API or database will be needed to avoid stale data.
-  *Mitigation*: Define a clear interface for data fetching so swapping to a live endpoint is trivial.
-
-- **Global CSS Conflicts**: Using global styles can lead to unintended overrides.
-  *Mitigation*: Plan to migrate to CSS Modules or utility-first CSS in Phase 2.
-
-- **API Route Ambiguity**: Single `/api/auth/route.ts` handling both sign-up and sign-in could get complex.
-  *Mitigation*: Clearly branch on HTTP method (`POST /register` vs. `POST /login`) or split into separate files.
-
-- **Lack of Testing**: No test suite means regressions can slip in.
-  *Mitigation*: Build a minimal Jest + React Testing Library setup in an early iteration.
-
-- **Error Handling Gaps**: Client and server must handle edge cases (network failures, malformed input).
-  *Mitigation*: Define a standard error response schema and show user-friendly messages.
+- **Serverless Cron Limitations**: Native long-running jobs aren’t supported; use external scheduler. Mitigation: Secure cron endpoint with a secret header to avoid public access.
+- **Database Migration Overhead**: Switching from Drizzle to Mongoose requires reworking models and queries. Mitigation: Decide early and abstract data-access layer.
+- **Webhook Security**: Incoming payment callbacks must be validated against a shared secret. Mitigation: Use signature verification and strict payload schema checks.
+- **Role Escalation Risk**: Improper role checks could expose admin actions. Mitigation: Enforce authorization in both frontend UI and backend API middleware.
+- **Email Deliverability**: Free SMTP may hit spam filters. Mitigation: Use a trusted email service (SendGrid, Mailgun) and configure SPF/DKIM records.
 
 ---
-
-This PRD should serve as the single source of truth for the AI model or any developer generating the next set of technical documents: Tech Stack Doc, Frontend Guidelines, Backend Structure, App Flow, File Structure, and IDE Rules. It contains all functional and non-functional requirements with no ambiguity, enabling seamless downstream development.
+This PRD provides a clear, unambiguous guide for building the invoice management module on top of the `codeguide-invoice-module` starter. Subsequent documents (technical stack details, frontend guidelines, backend structure, app flow, file organization) can reference these sections directly.

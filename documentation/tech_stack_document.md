@@ -1,90 +1,135 @@
-# Tech Stack Document
+# Tech Stack Document for codeguide-invoice-module
 
-This document explains the key technologies chosen for the **codeguide-starter** project. It’s written in everyday language so anyone—technical or not—can understand why each tool was picked and how it supports the application.
+This document explains every technology choice in plain language, so anyone can understand why it was picked and how it helps build a reliable invoice management system.
+
+---
 
 ## 1. Frontend Technologies
-The frontend is everything the user sees and interacts with. For this project, we’ve used:
 
-- **Next.js (App Router)**
-  - A React framework that makes page routing, server-side rendering, and API routes very simple.
-  - Enhances user experience by pre-rendering pages on the server or at build time, leading to faster initial load.
-- **React 18**
-  - The underlying library for building user interfaces with reusable components.
-  - Provides a smooth, interactive experience thanks to its virtual DOM and modern hooks.
+Our user interface (what you see and click on) is built with the following tools:
+
+- **Next.js 15 (App Router)**
+  • Handles page routing automatically and lets us colocate frontend code with backend API routes.
+  • Supports both server-side rendering (SSR) and static site generation (SSG) for fast page loads.
+- **React 19**
+  • Provides the building blocks (components) for our interface, letting us break the UI into reusable pieces.
 - **TypeScript**
-  - A superset of JavaScript that adds types (labels for data).
-  - Helps catch errors early during development and makes the code easier to maintain.
-- **CSS (globals.css & theme.css)**
-  - **globals.css** applies base styles (fonts, colors, resets) across the entire app.
-  - **dashboard/theme.css** defines the look and feel specific to the dashboard area.
-  - This separation keeps styles organized and avoids accidental style conflicts.
+  • Adds clear, predictable typing to JavaScript, catching errors early and making the code easier to understand.
+- **Tailwind CSS**
+  • A utility-first CSS framework that speeds up styling with small, consistent class names.
+  • Purges unused styles in production, resulting in smaller CSS files and faster load times.
+- **shadcn/ui**
+  • A library of ready-made, themeable components (tables, forms, buttons, cards) built on top of Tailwind.
+  • Accelerates UI development by giving us high-quality building blocks for the invoice list, detail view, and forms.
 
-By combining these tools, we have a clear structure (Next.js folders for pages and layouts), safer code (TypeScript), and flexible styling with vanilla CSS.
+How this enhances user experience:
+- Rapid page transitions and data loading thanks to Next.js optimizations.
+- A consistent, mobile-friendly design using Tailwind’s responsive utilities.
+- Clean, intuitive components (forms, tables) from shadcn/ui, ensuring a polished look without building from scratch.
+
+---
 
 ## 2. Backend Technologies
-The backend handles data, user accounts, and the logic behind the scenes. Our choices here are:
+
+All server-side logic (data storage, business rules, authentication) lives here:
 
 - **Next.js API Routes**
-  - Allows us to write server-side code (`route.ts` files) alongside our frontend in the same project.
-  - Runs on Node.js, so we can handle requests like sign-up, sign-in, and data fetching in one place.
-- **Node.js Runtime**
-  - The JavaScript environment on the server that executes our API routes.
-- **bcrypt** (npm package)
-  - A library for hashing passwords securely before storing them.
-  - Ensures that even if someone got access to our data, raw passwords aren’t visible.
-- **(Optional) NextAuth.js or JWT**
-  - While this starter kit shows a custom authentication flow, it can easily integrate services like NextAuth.js for email-based login or JWT (JSON Web Tokens) for stateless sessions.
+  • Lets us write REST endpoints directly inside the Next.js app (e.g., `/api/invoices`, `/api/payments/webhook`).
+  • Simplifies deployment by keeping front and back in one codebase.
+- **Better Auth**
+  • Handles secure sign-up, sign-in, password resets, and session management.
+  • We extend the user schema to include a `role` field (`admin` or `customer`) for fine-grained access control.
+- **PostgreSQL with Drizzle ORM**
+  • A reliable, relational database for storing invoices, users, and payments.
+  • Drizzle ORM provides type-safe database queries in TypeScript, reducing runtime errors.
+  • If you prefer MongoDB, you can swap Drizzle for Mongoose—keeping the same folder structure but replacing SQL tables with document schemas.
+- **Nodemailer (in `lib/email.ts`)**
+  • Sends invoice reminders and payment receipts via SMTP.
+- **Zod (optional)**
+  • Validates incoming data in API routes, ensuring only well-formed invoices or payments are processed.
 
-These components work together to receive user credentials, verify or store them securely, manage sessions or tokens, and deliver protected data back to the frontend.
+How these components work together:
+1. A user logs in via Better Auth and gets a secure session cookie.
+2. Frontend calls `/api/invoices`, where Next.js API Routes retrieves the session, checks the role, then reads or writes data in PostgreSQL via Drizzle.
+3. When a payment comes through, `/api/payments/webhook` validates it and updates the invoice status, then triggers an email via Nodemailer.
+
+---
 
 ## 3. Infrastructure and Deployment
-Infrastructure covers where and how we host the app, as well as how changes get delivered:
 
-- **Git & GitHub**
-  - Version control system (Git) and remote hosting (GitHub) keep track of all code changes and allow team collaboration.
-- **Vercel (or Netlify)**
-  - A popular hosting service optimized for Next.js, with one-click deployments and global content delivery.
-  - Automatically rebuilds and deploys the site whenever code is pushed to the main branch.
-- **GitHub Actions (CI/CD)**
-  - Automates tasks like linting (ESLint), formatting (Prettier), and running any tests you add.
-  - Ensures that only clean, tested code goes live.
+This section covers how we host, build, and deploy the application:
 
-Together, these tools provide a reliable, scalable setup where every code change is tested and deployed quickly, with minimal manual work.
+- **Version Control:** Git & GitHub
+  • Keeps a history of every change, lets multiple developers collaborate safely.
+- **CI/CD Pipeline:** GitHub Actions or Vercel’s built-in workflow
+  • Automatically runs tests, lints code, and deploys on every merge to the main branch.
+- **Hosting Platform:** Vercel (primary), or any Docker-friendly host
+  • Zero-configuration deployments for Next.js.
+  • Built-in environment variable management (API keys, database URLs).
+- **Containerization:** Docker (for local development)
+  • Spins up a consistent PostgreSQL or MongoDB instance locally.
+  • Guarantees the same environment on every developer’s machine.
+- **Environment Variables:** `.env.local` (development) & platform secrets (production)
+  • Keeps sensitive data (DB credentials, API keys) out of source control.
+- **Serverless Cron Jobs:** Vercel Cron or external scheduler (e.g., AWS EventBridge)
+  • Triggers `/api/cron/send-reminders` once per day to email overdue invoice reminders.
+
+These choices ensure:
+- Reliable, repeatable builds and deployments.
+- Scalable hosting that grows with your user base.
+- Easy onboarding for new developers using Docker.
+
+---
 
 ## 4. Third-Party Integrations
-While this starter kit is minimal by design, it already includes or can easily add:
 
-- **bcrypt**
-  - For secure password hashing (included as an npm dependency).
-- **NextAuth.js** (optional)
-  - A full-featured authentication library supporting email/password, OAuth, and more.
-- **Sentry or LogRocket** (optional)
-  - For real-time error tracking and performance monitoring in production.
+We rely on several external services to extend functionality safely and quickly:
 
-These integrations help extend the app’s capabilities without building every feature from scratch.
+- **Stripe (or other payment processor)**
+  • Processes credit-card and other payments.
+  • Sends webhooks to our `/api/payments/webhook` endpoint for real-time status updates.
+- **Email Delivery (via Nodemailer + SMTP provider)**
+  • Delivers payment receipts and overdue reminders.
+  • Can be backed by services like SendGrid or Mailgun for better deliverability.
+- **Better Auth**
+  • Outsources the security-critical user authentication flows.
+- **Vercel Cron Jobs (or external)**
+  • Schedules daily tasks without running a dedicated server.
+
+Benefits:
+- Offloads heavy lifting (payments, emails, auth) to specialized platforms.
+- Frees the team to focus on core invoicing features.
+
+---
 
 ## 5. Security and Performance Considerations
-We’ve baked in several measures to keep users safe and the app running smoothly:
 
-Security:
-- Passwords are never stored in plain text—bcrypt hashes them with a random salt.
-- API routes can implement CSRF protection and input validation to block malicious requests.
-- Session tokens or cookies are marked secure and HttpOnly to prevent theft via JavaScript.
+We’ve built in several layers of protection and speed optimizations:
 
-Performance:
-- Server-side rendering (SSR) and static site generation (SSG) in Next.js deliver pages faster.
-- Code splitting and lazy-loaded components ensure users only download what they need.
-- Global CSS and theme files are small and cached by the browser for quick repeat visits.
+Security measures:
+- **Role-based access control** with Better Auth and custom middleware to guard pages and API endpoints.
+- **Environment variables** and secret management to protect API keys and DB credentials.
+- **HTTPS** enforced by hosting platforms (Vercel, Docker proxies).
+- **Input validation** using Zod to prevent malformed or malicious data.
+- **Protected webhook endpoints** using shared secrets or signature checks.
 
-These strategies work together to give users a fast, secure experience every time.
+Performance optimizations:
+- **Built-in Next.js caching** for static assets and serverless functions.
+- **Incremental Static Regeneration (ISR)** for pages that can be pre-rendered and updated in the background.
+- **Tailwind CSS Purge** to remove unused styles, reducing CSS bundle size.
+- **Code splitting and lazy loading** of React components for faster initial load.
+- **Database indexing** on invoice status and due date columns for quick queries.
+
+---
 
 ## 6. Conclusion and Overall Tech Stack Summary
-In building **codeguide-starter**, we chose technologies that:
 
-- Align with modern web standards (Next.js, React, TypeScript).
-- Provide a clear, file-based project structure for rapid onboarding.
-- Offer built-in support for server-side rendering, API routes, and static assets.
-- Emphasize security through password hashing, session management, and safe defaults.
-- Enable easy scaling and future enhancements via modular code and optional integrations.
+In summary, this starter kit combines a modern, full-stack framework with proven third-party services to deliver a secure, scalable invoice management system:
 
-This stack strikes a balance between simplicity for newcomers and flexibility for experienced teams. It accelerates development of a secure authentication flow and a polished dashboard, while leaving room to plug in databases, test suites, and advanced features as the project grows.
+- Frontend: Next.js App Router, React, TypeScript, Tailwind CSS, shadcn/ui
+- Backend: Next.js API Routes, Better Auth, PostgreSQL + Drizzle ORM (or MongoDB + Mongoose), Nodemailer
+- Infrastructure: GitHub, GitHub Actions/Vercel CI, Vercel Hosting, Docker for local, Vercel Cron
+- Integrations: Stripe (payments), SMTP provider (emails), Better Auth, external scheduler
+- Security & Performance: Role-based auth, input validation, HTTPS, caching, ISR, CSS purging, DB indexing
+
+These choices ensure rapid development of your invoice features, strong data integrity, professional UI, and a deployment pipeline that scales with your business. The unified Next.js codebase means you can focus on building `InvoiceList`, `InvoiceDetail`, `InvoiceForm`, payment workflows, and reminders—rather than infrastructure plumbing.
